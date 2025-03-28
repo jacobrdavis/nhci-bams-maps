@@ -3,7 +3,7 @@ Shared plotting functions.
 """
 
 
-from typing import Optional, Union, Tuple, Sequence, Any
+from typing import List, Optional, Union, Tuple, Sequence, Any
 
 import cartopy
 import cmocean
@@ -39,8 +39,17 @@ default_drifter_labels = {
     'microswift': 'MicroSWIFT',
     'spotter': 'Spotter',
     'dwsd': '(A)DWSD',
+    'submersible': 'Submersible',
+    'nearshore_sensor': 'Nearshore Sensor',
 }
-
+default_storm_labels = {
+    'ian': 'Ian (2022)',
+    'idalia': 'Idalia (2023)',
+    'lee': 'Lee (2023)',
+    'francine': 'Francine (2024)',
+    'helene': 'Helene (2024)',
+    'milton': 'Milton (2024)',
+}
 
 def truncate_colormap(
     cmap: mpl.colors.LinearSegmentedColormap,
@@ -182,6 +191,11 @@ def get_drifter_color(drifter_type: str) -> str:
 def get_drifter_label(drifter_type: str) -> str:
     """ Return drifter label """
     return default_drifter_labels[drifter_type]
+
+
+def get_storm_label(storm_name: str) -> str:
+    """ Return storm label """
+    return default_storm_labels[storm_name]
 
 
 # Plot layout
@@ -329,6 +343,29 @@ coamps_time_series_kwargs = dict(
     alpha=0.35,
 )
 
+nearshore_sensor_map_kwargs = {
+    'color': np.array([13, 94, 50])/255,
+    'edgecolor': 'k',
+    'linewidth': 0.5,
+    's': 50,
+    'marker': '.',
+    'zorder':  5,
+}
+
+
+# Water level sensor plotting
+def plot_nearshore_sensors(
+    nearshore_sensor_df: pd.DataFrame,
+    ax: GeoAxes,
+    **kwargs,
+) -> PathCollection:
+    sc_plot = ax.scatter(
+        nearshore_sensor_df['Lon'],
+        nearshore_sensor_df['Lat'],
+        **kwargs
+    )
+    return sc_plot
+
 
 # Drifter plotting
 def plot_drifter_scatter(
@@ -440,7 +477,7 @@ microswift_map_kwargs = {
     'color': default_drifter_colors['microswift'],
     'edgecolor': 'k',
     'linewidth': 0.5,
-    's': 30,
+    's': 25,
     'marker': 'o',
     'zorder':  5,
 }
@@ -448,7 +485,7 @@ spotter_map_kwargs = {
     'color': default_drifter_colors['spotter'],
     'edgecolor': 'k',
     'linewidth': 0.5,
-    's': 35,
+    's': 30,
     'marker': 'p',
     'zorder': 5,
 }
@@ -456,7 +493,7 @@ dwsd_map_kwargs = {
     'color': default_drifter_colors['dwsd'],
     'edgecolor': 'k',
     'linewidth': 0.5,
-    's': 30,
+    's': 25,
     'marker': 'o',
     'zorder': 5,
 }
@@ -464,7 +501,7 @@ submersible_map_kwargs = {
     'color': default_drifter_colors['submersible'],
     'edgecolor': 'k',
     'linewidth': 0.5,
-    'markersize': 30,
+    'markersize': 25,
     'marker': 'o',
     'zorder': 7,
 }
@@ -631,7 +668,7 @@ default_map_gridline_kwargs = dict(
     y_inline=False,
     zorder=1,
     # alpha=0.25,
-    alpha=0.5,
+    alpha=0.30,
     xlabel_style={'size': small_font_size},
     ylabel_style={'size': small_font_size},
 )
@@ -668,6 +705,45 @@ def plot_base_chart(
     ax.add_feature(cartopy.feature.COASTLINE, **coast_kwargs)
     ax.add_feature(cartopy.feature.BORDERS, **border_kwargs)
     ax.add_feature(cartopy.feature.STATES, **border_kwargs)
+
+
+# def sq_aspect_map_extent_from_longitude(
+#     lower_latitude: float,
+#     upper_latitude: float,
+#     lower_longitude: Optional[float] = None,
+#     upper_longitude: Optional[float] = None,
+#     center_longitude: Optional[float] = None,
+# ) -> List[float]:
+#     LAT_TO_KM = 110.574  # km/deg
+#     KM_TO_LON = 111.320  # deg/km
+#     latitude_change = upper_latitude - lower_latitude
+#     latitude_dist = LAT_TO_KM * latitude_change  # km
+#     center_latitude = np.mean([upper_latitude, lower_latitude])
+#     longitude_change = latitude_dist * (KM_TO_LON * np.cos(np.deg2rad(center_latitude)))**(-1)
+#     if lower_longitude is not None:
+#         upper_longitude = lower_longitude + longitude_change
+#     elif upper_longitude is not None:
+#         lower_longitude = upper_longitude - longitude_change
+#     elif center_longitude is not None:
+#         lower_longitude = center_longitude - longitude_change / 2
+#         upper_longitude = center_longitude + longitude_change / 2
+#     else:
+#         raise ValueError(
+#             'Either lower_longitude, upper_longitude, or center_longitude '
+#             'must be specified.'
+#         )
+#     return [lower_longitude, upper_longitude, lower_latitude, upper_latitude]
+
+
+# def set_sq_map_aspect(ax, extent) -> None:
+#     longitude_change = extent[1] - extent[0]
+#     latitude_change = extent[3] - extent[2]
+#     aspect = longitude_change / latitude_change
+#     ax.set_aspect(aspect, adjustable='box')
+#     # ax.set_aspect('equal', adjustable='box')
+#     ax.set_adjustable('box')
+#     # print(f'Aspect ratio: {aspect}')
+#     return None
 
 
 default_inset_axes_kwargs = {
@@ -711,6 +787,53 @@ def plot_minimap(
     ax_inset.add_feature(cartopy.feature.STATES, **border_kwargs)
 
     return ax_inset
+
+
+def calculate_minimap_to_map_ratio(
+    extent_minimap: List[float],
+    extent_map: List[float],
+):
+    """ Calculate the ratio of minimap to (full) map shape. """
+    # Calculate the aspect ratio of the minimap.
+    dx_extent_minimap = extent_minimap[1] - extent_minimap[0]
+    dy_extent_minimap = extent_minimap[3] - extent_minimap[2]
+    xy_ratio_minimap = dx_extent_minimap/dy_extent_minimap
+
+    # Calculate the aspect ratio of the full map.
+    dx_extent = extent_map[1] - extent_map[0]
+    dy_extent = extent_map[3] - extent_map[2]
+    xy_ratio = dx_extent/dy_extent
+
+    return xy_ratio_minimap/xy_ratio
+
+default_inset_rectangle_kwargs = {
+    'facecolor': 'none',
+    'edgecolor': 'k',
+    'linewidth': 0.5,
+    'alpha': 1,
+    'zorder': 4,
+}
+
+
+def plot_inset_rectangle(
+    ax: GeoAxes,
+    extent: List[float],
+    **kwargs,
+):
+    inset_rectangle_kwargs = _set_kwarg_defaults(
+        default_inset_rectangle_kwargs,
+        kwargs,
+    )
+    width = extent[1] - extent[0]
+    height = extent[3] - extent[2]
+    ax.add_patch(
+        mpl.patches.Rectangle(
+            xy=[extent[0], extent[2]],
+            width=width,
+            height=height,
+            **inset_rectangle_kwargs,
+            )
+    )
 
 
 default_hurricane_offset_image_kwargs = {
@@ -815,14 +938,17 @@ def plot_bathymetry(
 
 def plot_bathymetry_contours(
     bathy_ds: xr.Dataset,
-    label_levels,
-    label_locations,
-    angle,
-    ax: GeoAxes,
+    label_levels: Optional[list] = None,
+    label_locations: Optional[list] = None,
+    angle: float = 0,
+    ax: GeoAxes = None,
     fontsize=small_font_size,
     **kwargs,
-) -> Tuple[QuadContourSet, ContourSet]:
+) -> Tuple[QuadContourSet, Optional[ContourSet]]:
     """ Plot bathymetry contours on a map. """
+    if ax is None:
+        ax = plt.gca()
+
     bathy_contours = ax.contour(
         bathy_ds['lon'],
         bathy_ds['lat'],
@@ -840,17 +966,20 @@ def plot_bathymetry_contours(
         else:
             return rf"{label} m"
 
-    contour_labels = ax.clabel(
-        bathy_contours,
-        colors='k',
-        fontsize=fontsize,
-        levels=label_levels,
-        manual=label_locations,
-        fmt=fmt_level_labels,
-    )
+    if label_levels is not None:
+        contour_labels = ax.clabel(
+            bathy_contours,
+            colors='k',
+            fontsize=fontsize,
+            levels=label_levels,
+            manual=label_locations,
+            fmt=fmt_level_labels,
+        )
 
-    for l in contour_labels:
-        l.set_rotation(angle)
+        for l in contour_labels:
+            l.set_rotation(angle)
+    else:
+        contour_labels = None
 
     return bathy_contours, contour_labels
 
@@ -942,6 +1071,7 @@ default_annotation_bbox_kwargs = {
 }
 default_offset_image_kwargs = {
     'zoom': 1,
+    'clip_on': True,
 }
 
 
@@ -986,3 +1116,192 @@ def hist_log(x, n_bins=10, ax=None, **kwargs):
         bins=bins_log,
         **kwargs,
     )
+
+import cartopy.crs as ccrs
+import numpy as np
+
+
+import numpy as np
+import cartopy.crs as ccrs
+import cartopy.geodesic as cgeo
+
+
+def _axes_to_lonlat(ax, coords):
+    """(lon, lat) from axes coordinates."""
+    display = ax.transAxes.transform(coords)
+    data = ax.transData.inverted().transform(display)
+    lonlat = ccrs.PlateCarree().transform_point(*data, ax.projection)
+
+    return lonlat
+
+
+def _upper_bound(start, direction, distance, dist_func):
+    """A point farther than distance from start, in the given direction.
+
+    It doesn't matter which coordinate system start is given in, as long
+    as dist_func takes points in that coordinate system.
+
+    Args:
+        start:     Starting point for the line.
+        direction  Nonzero (2, 1)-shaped array, a direction vector.
+        distance:  Positive distance to go past.
+        dist_func: A two-argument function which returns distance.
+
+    Returns:
+        Coordinates of a point (a (2, 1)-shaped NumPy array).
+    """
+    if distance <= 0:
+        raise ValueError(f"Minimum distance is not positive: {distance}")
+
+    if np.linalg.norm(direction) == 0:
+        raise ValueError("Direction vector must not be zero.")
+
+    # Exponential search until the distance between start and end is
+    # greater than the given limit.
+    length = 0.1
+    end = start + length * direction
+
+    while dist_func(start, end) < distance:
+        length *= 2
+        end = start + length * direction
+
+    return end
+
+
+def _distance_along_line(start, end, distance, dist_func, tol):
+    """Point at a distance from start on the segment  from start to end.
+
+    It doesn't matter which coordinate system start is given in, as long
+    as dist_func takes points in that coordinate system.
+
+    Args:
+        start:     Starting point for the line.
+        end:       Outer bound on point's location.
+        distance:  Positive distance to travel.
+        dist_func: Two-argument function which returns distance.
+        tol:       Relative error in distance to allow.
+
+    Returns:
+        Coordinates of a point (a (2, 1)-shaped NumPy array).
+    """
+    initial_distance = dist_func(start, end)
+    if initial_distance < distance:
+        raise ValueError(f"End is closer to start ({initial_distance}) than "
+                         f"given distance ({distance}).")
+
+    if tol <= 0:
+        raise ValueError(f"Tolerance is not positive: {tol}")
+
+    # Binary search for a point at the given distance.
+    left = start
+    right = end
+
+    while not np.isclose(dist_func(start, right), distance, rtol=tol):
+        midpoint = (left + right) / 2
+
+        # If midpoint is too close, search in second half.
+        if dist_func(start, midpoint) < distance:
+            left = midpoint
+        # Otherwise the midpoint is too far, so search in first half.
+        else:
+            right = midpoint
+
+    return right
+
+
+def _point_along_line(ax, start, distance, angle=0, tol=0.01):
+    """Point at a given distance from start at a given angle.
+
+    Args:
+        ax:       CartoPy axes.
+        start:    Starting point for the line in axes coordinates.
+        distance: Positive physical distance to travel.
+        angle:    Anti-clockwise angle for the bar, in radians. Default: 0
+        tol:      Relative error in distance to allow. Default: 0.01
+
+    Returns:
+        Coordinates of a point (a (2, 1)-shaped NumPy array).
+    """
+    # Direction vector of the line in axes coordinates.
+    direction = np.array([np.cos(angle), np.sin(angle)])
+
+    geodesic = cgeo.Geodesic()
+
+    # Physical distance between points.
+    def dist_func(a_axes, b_axes):
+        a_phys = _axes_to_lonlat(ax, a_axes)
+        b_phys = _axes_to_lonlat(ax, b_axes)
+
+        # Geodesic().inverse returns a NumPy MemoryView like [[distance,
+        # start azimuth, end azimuth]].
+        return geodesic.inverse(a_phys, b_phys)[0, 0]
+
+    end = _upper_bound(start, direction, distance, dist_func)
+
+    return _distance_along_line(start, end, distance, dist_func, tol)
+
+
+def scale_bar(ax, location, length, metres_per_unit=1000, unit_name='km',
+              tol=0.01, angle=0, color='black', linewidth=3, text_offset=0.005,
+              ha='center', va='bottom', plot_kwargs=None, text_kwargs=None,
+              **kwargs):
+    """Add a scale bar to CartoPy axes.
+
+    Adapted from user mephistolotl at:
+    https://stackoverflow.com/questions/32333870/how-can-i-show-a-km-ruler-on-a-cartopy-matplotlib-plot
+
+    For angles between 0 and 90 the text and line may be plotted at
+    slightly different angles for unknown reasons. To work around this,
+    override the 'rotation' keyword argument with text_kwargs.
+
+    Args:
+        ax:              CartoPy axes.
+        location:        Position of left-side of bar in axes coordinates.
+        length:          Geodesic length of the scale bar.
+        metres_per_unit: Number of metres in the given unit. Default: 1000
+        unit_name:       Name of the given unit. Default: 'km'
+        tol:             Allowed relative error in length of bar. Default: 0.01
+        angle:           Anti-clockwise rotation of the bar.
+        color:           Color of the bar and text. Default: 'black'
+        linewidth:       Same argument as for plot.
+        text_offset:     Perpendicular offset for text in axes coordinates.
+                         Default: 0.005
+        ha:              Horizontal alignment. Default: 'center'
+        va:              Vertical alignment. Default: 'bottom'
+        **plot_kwargs:   Keyword arguments for plot, overridden by **kwargs.
+        **text_kwargs:   Keyword arguments for text, overridden by **kwargs.
+        **kwargs:        Keyword arguments for both plot and text.
+    """
+    # Setup kwargs, update plot_kwargs and text_kwargs.
+    if plot_kwargs is None:
+        plot_kwargs = {}
+    if text_kwargs is None:
+        text_kwargs = {}
+
+    plot_kwargs = {'linewidth': linewidth, 'color': color, **plot_kwargs,
+                   **kwargs}
+    text_kwargs = {'ha': ha, 'va': va, 'rotation': angle, 'color': color,
+                   **text_kwargs, **kwargs}
+
+    # Convert all units and types.
+    location = np.asarray(location)  # For vector addition.
+    length_metres = length * metres_per_unit
+    angle_rad = angle * np.pi / 180
+
+    # End-point of bar.
+    end = _point_along_line(ax, location, length_metres, angle=angle_rad,
+                            tol=tol)
+
+    # Coordinates are currently in axes coordinates, so use transAxes to
+    # put into data coordinates. *zip(a, b) produces a list of x-coords,
+    # then a list of y-coords.
+    ax.plot(*zip(location, end), transform=ax.transAxes, **plot_kwargs)
+
+    # Push text away from bar in the perpendicular direction.
+    midpoint = (location + end) / 2
+    offset = text_offset * np.array([-np.sin(angle_rad), np.cos(angle_rad)])
+    text_location = midpoint + offset
+
+    # 'rotation' keyword argument is in text_kwargs.
+    ax.text(*text_location, f"{length} {unit_name}", rotation_mode='anchor',
+            transform=ax.transAxes, **text_kwargs)

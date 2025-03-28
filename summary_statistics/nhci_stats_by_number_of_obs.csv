@@ -1,0 +1,7 @@
+storm,total_number_of_observations,storm_distance < 500,storm_distance < 100,storm_distance < 50,storm_distance_rmw_norm <= 10,storm_distance_rmw_norm <= 5,storm_distance_rmw_norm <= 1
+2022_IAN,1570,881,24,4,823,155,2
+2023_IDALIA,1443,750,73,25,595,66,4
+2023_LEE,847,218,0,0,786,533,0
+2024_FRANCINE,904,588,33,6,808,398,3
+2024_HELENE,2326,526,56,13,1466,656,9
+2024_MILTON,2795,1181,97,27,954,347,4

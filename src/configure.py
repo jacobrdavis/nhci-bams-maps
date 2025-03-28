@@ -24,3 +24,10 @@ def read_stored_variable(variable_name: str):
     """
     get_ipython().run_line_magic('store', '-r ' + variable_name)
     return eval(variable_name)
+
+def configure_ipython():
+    shell = get_ipython()
+    if shell is not None:
+        shell.enable_matplotlib('inline')
+        shell.run_line_magic('reload_ext', 'autoreload')
+        shell.run_line_magic('autoreload', '2')

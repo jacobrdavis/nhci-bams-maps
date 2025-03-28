@@ -1,0 +1,7 @@
+storm,total_number_of_drifters,storm_distance < 500,storm_distance < 100,storm_distance < 50,storm_distance_rmw_norm <= 10,storm_distance_rmw_norm <= 5,storm_distance_rmw_norm <= 1
+2022_IAN,13,13,2,1,13,9,1
+2023_IDALIA,18,18,11,7,18,11,3
+2023_LEE,8,7,0,0,8,8,0
+2024_FRANCINE,11,11,7,3,11,11,2
+2024_HELENE,19,19,10,5,19,18,5
+2024_MILTON,36,31,10,6,35,20,2
